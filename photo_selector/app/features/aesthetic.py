@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
 
 from urllib.request import urlretrieve
 
@@ -53,7 +54,7 @@ def _load_aesthetic_model() -> torch.nn.Module:
     return _AESTHETIC_MODEL
 
 
-def estimate_aesthetic_score(image_path: str | Path) -> float:
+def estimate_aesthetic_score(image_path: str | Path, embedding: Optional[np.ndarray] = None) -> float:
     """
     Estimate aesthetic quality using the LAION aesthetic predictor.
 
@@ -64,7 +65,9 @@ def estimate_aesthetic_score(image_path: str | Path) -> float:
     if _AESTHETIC_DEVICE is None:
         raise RuntimeError("Aesthetic model device is not initialized.")
 
-    embedding = generate_embedding(str(image_path))
+    if embedding is None:
+        embedding = generate_embedding(str(image_path))
+
     embedding_tensor = torch.from_numpy(np.asarray(embedding, dtype=np.float32)).unsqueeze(0).to(_AESTHETIC_DEVICE)
 
     with torch.no_grad():

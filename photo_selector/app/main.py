@@ -11,7 +11,7 @@ from app.clustering.cluster import assign_clusters
 from app.config import DB_PATH, EMBEDDINGS_DIR, THUMBNAIL_SIZE, THUMBNAILS_DIR, ensure_directories
 from app.features.aesthetic import estimate_aesthetic_score
 from app.features.blur import calculate_blur_score
-from app.features.embedding import generate_embedding
+from app.features.embedding import generate_embedding, update_index_json
 from app.features.face_detection import detect_face_count
 from app.ingestion.scanner import scan_images
 from app.ranking.ranker import compute_final_scores
@@ -35,6 +35,7 @@ def run_pipeline(input_folder: str | Path) -> None:
 
     embeddings: list[np.ndarray] = []
     image_path_strings: list[str] = []
+    index_records: list[dict] = []
 
     for image_path in tqdm(image_paths, desc="Processing images"):
         try:
@@ -43,7 +44,7 @@ def run_pipeline(input_folder: str | Path) -> None:
             print(f"[WARN] Skipping {image_path}: {exc}")
             continue
 
-        aesthetic_score = estimate_aesthetic_score(image_path)
+        aesthetic_score = estimate_aesthetic_score(image_path, embedding=embedding)
         blur_score = calculate_blur_score(image_path)
         face_count = detect_face_count(image_path)
 
@@ -64,6 +65,16 @@ def run_pipeline(input_folder: str | Path) -> None:
 
         embeddings.append(embedding)
         image_path_strings.append(str(image_path))
+        index_records.append(
+            {
+                "id": artifact_stem,
+                "path": str(image_path),
+                "embedding_path": str(embedding_file),
+                "aesthetic_score": aesthetic_score,
+                "blur_score": blur_score,
+                "face_count": face_count,
+            }
+        )
 
     if embeddings:
         cluster_ids = assign_clusters(np.vstack(embeddings))
@@ -74,6 +85,9 @@ def run_pipeline(input_folder: str | Path) -> None:
     ranked = compute_final_scores(records)
     for item in ranked:
         db.update_final_score(item["path"], float(item["final_score"]))
+
+    if index_records:
+        update_index_json(index_records)
 
     print("[INFO] Pipeline complete.")
     db.close()
