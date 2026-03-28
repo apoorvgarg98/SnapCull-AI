@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -18,6 +19,12 @@ from app.storage.db import Database
 from app.utils.image_utils import generate_thumbnail
 
 
+def _artifact_stem(image_path: Path) -> str:
+    """Return a stable, filesystem-safe stem unique to each image path."""
+    digest = hashlib.sha256(str(image_path.resolve()).encode("utf-8")).hexdigest()[:12]
+    return f"{image_path.stem}_{digest}"
+
+
 def run_pipeline(input_folder: str | Path) -> None:
     ensure_directories()
     db = Database(DB_PATH)
@@ -30,15 +37,21 @@ def run_pipeline(input_folder: str | Path) -> None:
     image_path_strings: list[str] = []
 
     for image_path in tqdm(image_paths, desc="Processing images"):
-        embedding = generate_embedding(image_path)
+        try:
+            embedding = generate_embedding(image_path)
+        except ValueError as exc:
+            print(f"[WARN] Skipping {image_path}: {exc}")
+            continue
+
         aesthetic_score = estimate_aesthetic_score(image_path)
         blur_score = calculate_blur_score(image_path)
         face_count = detect_face_count(image_path)
 
-        embedding_file = EMBEDDINGS_DIR / f"{image_path.stem}.npy"
+        artifact_stem = _artifact_stem(image_path)
+        embedding_file = EMBEDDINGS_DIR / f"{artifact_stem}.npy"
         np.save(embedding_file, embedding)
 
-        thumbnail_file = THUMBNAILS_DIR / f"{image_path.stem}.jpg"
+        thumbnail_file = THUMBNAILS_DIR / f"{artifact_stem}.jpg"
         generate_thumbnail(image_path, thumbnail_file, THUMBNAIL_SIZE)
 
         db.upsert_image(

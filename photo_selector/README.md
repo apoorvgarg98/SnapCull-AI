@@ -59,7 +59,7 @@ cd photo_selector
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
 pip install -r requirements.txt
-python app/main.py --input-folder /path/to/images
+python -m app.main --input-folder /path/to/images
 streamlit run app/ui/streamlit_app.py
 ```
 
