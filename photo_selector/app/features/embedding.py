@@ -28,15 +28,12 @@ import torch
 from PIL import Image, UnidentifiedImageError
 from tqdm import tqdm
 
-from app.config import DATA_DIR, EMBEDDINGS_DIR
+from app.config import DATA_DIR, EMBEDDINGS_DIR, INDEX_JSON_PATH
 
 # Singleton CLIP state
 _CLIP_MODEL: Optional[torch.nn.Module] = None
 _CLIP_PREPROCESS = None
 _CLIP_DEVICE: Optional[str] = None
-
-INDEX_JSON_PATH = DATA_DIR / "images_index.json"
-
 
 def load_clip_model() -> tuple[torch.nn.Module, object]:
     """Load OpenAI CLIP ViT-B/32 once and return (model, preprocess)."""

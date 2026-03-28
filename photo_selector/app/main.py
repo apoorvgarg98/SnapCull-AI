@@ -11,7 +11,7 @@ import torch
 from tqdm import tqdm
 
 from app.clustering.cluster import assign_clusters
-from app.config import DB_PATH, EMBEDDINGS_DIR, THUMBNAIL_SIZE, THUMBNAILS_DIR, ensure_directories
+from app.config import EMBEDDINGS_DIR, THUMBNAIL_SIZE, THUMBNAILS_DIR, ensure_directories
 from app.features.aesthetic import estimate_aesthetic_score
 from app.features.blur import calculate_blur_score
 from app.features.embedding import batch_generate_embeddings, update_index_json
@@ -19,7 +19,6 @@ from app.features.face_detection import detect_face_count
 from app.features.yolo_detection import detect_wedding_context
 from app.ingestion.scanner import scan_images
 from app.ranking.ranker import compute_final_scores
-from app.storage.db import Database
 from app.utils.image_utils import generate_thumbnail
 
 
@@ -61,19 +60,15 @@ def _process_single_image(image_path: Path, embedding: np.ndarray) -> dict:
 
 def run_pipeline(input_folder: str | Path) -> None:
     ensure_directories()
-    db = Database(DB_PATH)
-    db.initialize()
 
     image_paths = scan_images(input_folder)
     print(f"[INFO] Found {len(image_paths)} images in {input_folder}")
 
     if not image_paths:
         print("[INFO] No images found. Nothing to process.")
-        db.close()
         return
 
     batch_size = int(os.getenv("BATCH_SIZE", "32"))
-    db_commit_every = int(os.getenv("DB_COMMIT_EVERY", "100"))
     requested_workers = int(os.getenv("FEATURE_WORKERS", "4"))
 
     print(f"[INFO] Generating CLIP embeddings in batches (batch_size={batch_size})")
@@ -88,7 +83,6 @@ def run_pipeline(input_folder: str | Path) -> None:
 
     if not valid_items:
         print("[INFO] No valid images after embedding step.")
-        db.close()
         return
 
     gpu_available = torch.cuda.is_available()
@@ -101,7 +95,6 @@ def run_pipeline(input_folder: str | Path) -> None:
     embeddings: list[np.ndarray] = []
     image_path_strings: list[str] = []
     index_records: list[dict] = []
-    processed_count = 0
 
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
         futures = {
@@ -115,19 +108,6 @@ def run_pipeline(input_folder: str | Path) -> None:
             except Exception as exc:
                 print(f"[WARN] Failed processing {image_path}: {exc}")
                 continue
-
-            db.upsert_image(
-                path=item["path"],
-                embedding_path=item["embedding_file"],
-                aesthetic_score=item["aesthetic_score"],
-                blur_score=item["blur_score"],
-                face_count=item["face_count"],
-                person_count=item["person_count"],
-                has_bride_groom=item["has_bride_groom"],
-                has_ritual=item["has_ritual"],
-                has_group=item["has_group"],
-                auto_commit=False,
-            )
 
             embeddings.append(item["embedding"])
             image_path_strings.append(item["path"])
@@ -147,28 +127,17 @@ def run_pipeline(input_folder: str | Path) -> None:
                 }
             )
 
-            processed_count += 1
-            if processed_count % db_commit_every == 0:
-                db.commit()
-                print(f"[INFO] Committed {processed_count} rows to DB...")
-
-    db.commit()
-
     if embeddings:
         cluster_ids = assign_clusters(np.vstack(embeddings))
-        for image_path, cluster_id in zip(image_path_strings, cluster_ids):
-            db.update_cluster(image_path, cluster_id)
+        cluster_by_path = {image_path: cluster_id for image_path, cluster_id in zip(image_path_strings, cluster_ids)}
+        for item in index_records:
+            item["cluster_id"] = int(cluster_by_path.get(item["path"], 0))
 
-    records = db.fetch_all_images()
-    ranked = compute_final_scores(records)
-    for item in ranked:
-        db.update_final_score(item["path"], float(item["final_score"]))
-
-    if index_records:
-        update_index_json(index_records)
+    ranked = compute_final_scores(index_records)
+    if ranked:
+        update_index_json(ranked)
 
     print("[INFO] Pipeline complete.")
-    db.close()
 
 
 def parse_args() -> argparse.Namespace:

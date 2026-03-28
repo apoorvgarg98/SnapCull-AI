@@ -1,21 +1,27 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import streamlit as st
 
-from app.config import DB_PATH
-from app.storage.db import Database
+from app.config import INDEX_JSON_PATH
 
 
 def _load_rows() -> list[dict]:
-    if not DB_PATH.exists():
+    if not INDEX_JSON_PATH.exists():
         return []
-    db = Database(DB_PATH)
-    db.initialize()
-    rows = db.fetch_all_images()
-    db.close()
-    return rows
+    try:
+        payload = json.loads(INDEX_JSON_PATH.read_text(encoding="utf-8"))
+    except Exception as exc:
+        st.warning(f"Could not read {INDEX_JSON_PATH}: {exc}")
+        return []
+
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    if isinstance(payload, dict) and isinstance(payload.get("images"), list):
+        return [item for item in payload["images"] if isinstance(item, dict)]
+    return []
 
 
 def main() -> None:
@@ -33,7 +39,7 @@ def main() -> None:
 
     rows = _load_rows()
     if not rows:
-        st.info("No images found in DB. Run the pipeline first with app/main.py.")
+        st.info("No images found in index JSON. Run the pipeline first with app/main.py.")
         return
 
     st.subheader(f"Images ({len(rows)})")
