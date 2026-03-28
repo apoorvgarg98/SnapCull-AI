@@ -6,6 +6,7 @@ streamlit
 torch
 torchvision
 facenet-pytorch
+ultralytics
 tqdm
 faiss-cpu
 exifread

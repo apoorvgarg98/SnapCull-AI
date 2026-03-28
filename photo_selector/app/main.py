@@ -13,6 +13,7 @@ from app.features.aesthetic import estimate_aesthetic_score
 from app.features.blur import calculate_blur_score
 from app.features.embedding import generate_embedding, update_index_json
 from app.features.face_detection import detect_face_count
+from app.features.yolo_detection import detect_wedding_context
 from app.ingestion.scanner import scan_images
 from app.ranking.ranker import compute_final_scores
 from app.storage.db import Database
@@ -47,6 +48,7 @@ def run_pipeline(input_folder: str | Path) -> None:
         aesthetic_score = estimate_aesthetic_score(image_path, embedding=embedding)
         blur_score = calculate_blur_score(image_path)
         face_count = detect_face_count(image_path)
+        yolo_context = detect_wedding_context(image_path)
 
         artifact_stem = _artifact_stem(image_path)
         embedding_file = EMBEDDINGS_DIR / f"{artifact_stem}.npy"
@@ -61,6 +63,10 @@ def run_pipeline(input_folder: str | Path) -> None:
             aesthetic_score=aesthetic_score,
             blur_score=blur_score,
             face_count=face_count,
+            person_count=int(yolo_context["person_count"]),
+            has_bride_groom=bool(yolo_context["has_bride_groom"]),
+            has_ritual=bool(yolo_context["has_ritual"]),
+            has_group=bool(yolo_context["has_group"]),
         )
 
         embeddings.append(embedding)
@@ -73,6 +79,11 @@ def run_pipeline(input_folder: str | Path) -> None:
                 "aesthetic_score": aesthetic_score,
                 "blur_score": blur_score,
                 "face_count": face_count,
+                "person_count": int(yolo_context["person_count"]),
+                "has_group": bool(yolo_context["has_group"]),
+                "has_bride_groom": bool(yolo_context["has_bride_groom"]),
+                "has_ritual": bool(yolo_context["has_ritual"]),
+                "yolo_labels": yolo_context["yolo_labels"],
             }
         )
 
