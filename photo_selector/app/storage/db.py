@@ -58,6 +58,7 @@ class Database:
         has_bride_groom: bool = False,
         has_ritual: bool = False,
         has_group: bool = False,
+        auto_commit: bool = True,
     ) -> None:
         query = """
         INSERT INTO images (
@@ -88,6 +89,10 @@ class Database:
                 int(has_group),
             ),
         )
+        if auto_commit:
+            self.connection.commit()
+
+    def commit(self) -> None:
         self.connection.commit()
 
     def update_cluster(self, image_path: str, cluster_id: int) -> None:
