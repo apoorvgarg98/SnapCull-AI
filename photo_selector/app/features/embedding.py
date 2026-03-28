@@ -28,15 +28,13 @@ import torch
 from PIL import Image, UnidentifiedImageError
 from tqdm import tqdm
 
+from app.config import DATA_DIR, EMBEDDINGS_DIR
+
 # Singleton CLIP state
 _CLIP_MODEL: Optional[torch.nn.Module] = None
 _CLIP_PREPROCESS = None
 _CLIP_DEVICE: Optional[str] = None
 
-# Paths relative to project root (photo_selector/)
-BASE_DIR = Path(__file__).resolve().parents[2]
-DATA_DIR = BASE_DIR / "data"
-EMBEDDINGS_DIR = DATA_DIR / "embeddings"
 INDEX_JSON_PATH = DATA_DIR / "images_index.json"
 
 

@@ -5,6 +5,7 @@ scikit-learn
 streamlit
 torch
 torchvision
+facenet-pytorch
 tqdm
 faiss-cpu
 exifread
