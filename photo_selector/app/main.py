@@ -7,7 +7,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
-import torch
 from tqdm import tqdm
 
 from app.clustering.cluster import assign_clusters
@@ -19,6 +18,7 @@ from app.features.face_detection import detect_face_count
 from app.features.yolo_detection import detect_wedding_context
 from app.ingestion.scanner import scan_images
 from app.ranking.ranker import compute_final_scores
+from app.utils.device import cuda_diagnostics, resolve_torch_device
 from app.utils.image_utils import generate_thumbnail
 
 
@@ -71,6 +71,10 @@ def run_pipeline(input_folder: str | Path) -> None:
     batch_size = int(os.getenv("BATCH_SIZE", "32"))
     requested_workers = int(os.getenv("FEATURE_WORKERS", "4"))
 
+    selected_device = resolve_torch_device()
+    print(f"[INFO] Device diagnostics: {cuda_diagnostics()}")
+    print(f"[INFO] Selected torch device: {selected_device}")
+
     print(f"[INFO] Generating CLIP embeddings in batches (batch_size={batch_size})")
     batched = batch_generate_embeddings([str(path) for path in image_paths], batch_size=batch_size)
 
@@ -85,7 +89,7 @@ def run_pipeline(input_folder: str | Path) -> None:
         print("[INFO] No valid images after embedding step.")
         return
 
-    gpu_available = torch.cuda.is_available()
+    gpu_available = selected_device.startswith("cuda")
     worker_count = 1 if gpu_available else max(1, requested_workers)
     print(
         f"[INFO] Feature extraction workers={worker_count} "

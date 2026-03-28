@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import torch
 from facenet_pytorch import MTCNN
 from PIL import Image, UnidentifiedImageError
+
+from app.utils.device import resolve_torch_device
 
 _FACE_DETECTOR: MTCNN | None = None
 _FACE_DEVICE: str | None = None
@@ -20,7 +21,7 @@ def _load_face_detector() -> MTCNN:
     if _FACE_DETECTOR is not None:
         return _FACE_DETECTOR
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = resolve_torch_device()
     detector = MTCNN(keep_all=True, device=device)
 
     _FACE_DETECTOR = detector

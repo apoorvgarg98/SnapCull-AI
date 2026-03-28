@@ -3,8 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import torch
 from ultralytics import YOLO
+
+from app.utils.device import resolve_torch_device
 
 _YOLO_MODEL: YOLO | None = None
 _YOLO_DEVICE: str | None = None
@@ -31,7 +32,7 @@ def _load_yolo_model() -> YOLO:
         return _YOLO_MODEL
 
     _YOLO_MODEL = YOLO("yolov8n.pt")
-    _YOLO_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    _YOLO_DEVICE = resolve_torch_device()
     print(f"[INFO] YOLOv8 detector loaded on device={_YOLO_DEVICE}")
     return _YOLO_MODEL
 

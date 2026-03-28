@@ -10,6 +10,7 @@ import torch
 
 from app.config import DATA_DIR
 from app.features.embedding import generate_embedding
+from app.utils.device import resolve_torch_device
 
 _AESTHETIC_MODEL: torch.nn.Module | None = None
 _AESTHETIC_DEVICE: str | None = None
@@ -40,7 +41,7 @@ def _load_aesthetic_model() -> torch.nn.Module:
         return _AESTHETIC_MODEL
 
     _ensure_model_file()
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = resolve_torch_device()
 
     model = torch.nn.Linear(512, 1)
     state_dict = torch.load(MODEL_PATH, map_location=device)

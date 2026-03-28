@@ -29,6 +29,7 @@ from PIL import Image, UnidentifiedImageError
 from tqdm import tqdm
 
 from app.config import DATA_DIR, EMBEDDINGS_DIR, INDEX_JSON_PATH
+from app.utils.device import resolve_torch_device
 
 # Singleton CLIP state
 _CLIP_MODEL: Optional[torch.nn.Module] = None
@@ -42,7 +43,7 @@ def load_clip_model() -> tuple[torch.nn.Module, object]:
     if _CLIP_MODEL is not None and _CLIP_PREPROCESS is not None:
         return _CLIP_MODEL, _CLIP_PREPROCESS
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = resolve_torch_device()
     _CLIP_DEVICE = device
 
     try:
