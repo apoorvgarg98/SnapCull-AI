@@ -11,6 +11,7 @@ DATA_DIR: Path = BASE_DIR / "data"
 EMBEDDINGS_DIR: Path = DATA_DIR / "embeddings"
 THUMBNAILS_DIR: Path = DATA_DIR / "thumbnails"
 DB_PATH: Path = DATA_DIR / "database.sqlite"
+INDEX_JSON_PATH: Path = DATA_DIR / "images_index.json"
 
 # Ranking weights
 WEIGHT_AESTHETIC: float = 0.4
